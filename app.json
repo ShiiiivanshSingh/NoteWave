@@ -32,6 +32,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "entryPoint": "./App.js",
     "devDependencies": {
       "@react-native-community/cli": "latest"
     }

@@ -1,91 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
-import DocumentPicker from 'react-native-document-picker';
+import { View, Text, Button, FlatList, StyleSheet, Image, TextInput } from 'react-native';
+import * as MediaLibrary from 'expo-media-library';
+import { YouTube } from 'react-native-youtube-iframe';
+
+const API_KEY = 'AIzaSyCXsoDwxwma6xDENufcLFY-E35ttAYPjvs'; // Replace with your YouTube API key
 
 function App() {
-    const [musicList, setMusicList] = useState([]);
-    const [currentTrack, setCurrentTrack] = useState(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [sound, setSound] = useState();
+    const [searchQuery, setSearchQuery] = useState('');
+    const [videoList, setVideoList] = useState([]);
+    const [playingVideoId, setPlayingVideoId] = useState(null);
+
+    const requestPermissions = async () => {
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== 'granted') {
+            alert('Permission to access media library is required!');
+        } else {
+            console.log('Media library access granted');
+        }
+    };
 
     useEffect(() => {
-        const loadMusic = async () => {
-            const storedMusic = await AsyncStorage.getItem('musicList');
-            console.log("Stored Music:", storedMusic); // Debugging line
-            if (storedMusic) {
-                setMusicList(JSON.parse(storedMusic));
-            } else {
-                console.log("No music found in local storage."); // Debugging line
-            }
-        };
-
-        loadMusic();
+        requestPermissions();
     }, []);
 
-    const playTrack = async (track) => {
-        const { sound } = await Audio.Sound.createAsync(
-            { uri: track.url }
-        );
-        setSound(sound);
-        await sound.playAsync();
-        setCurrentTrack(track);
-        setIsPlaying(true);
-    };
-
-    const stopTrack = async () => {
-        if (sound) {
-            await sound.stopAsync();
-            setCurrentTrack(null);
-            setIsPlaying(false);
-        }
-    };
-
-    const selectDirectory = async () => {
+    const searchYouTube = async () => {
         try {
-            const res = await DocumentPicker.pick({
-                type: [DocumentPicker.types.audio],
-            });
-            console.log("Selected file:", res);
-            // Here you can add logic to read the selected file and update the musicList
-            // For example, you can add the selected file to the musicList state
-            const newTrack = {
-                name: res.name,
-                url: res.uri,
-                albumArt: "https://www.example.com/defaultAlbumArt.jpg" // Placeholder for album art
-            };
-            setMusicList(prevList => [...prevList, newTrack]);
-            await AsyncStorage.setItem('musicList', JSON.stringify([...musicList, newTrack]));
-        } catch (err) {
-            if (DocumentPicker.isCancel(err)) {
-                console.log("User cancelled the picker");
+            const response = await fetch(
+                `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${searchQuery}&key=${API_KEY}`
+            );
+            const data = await response.json();
+            console.log("YouTube API Response:", data); // Log the response
+            if (data.items && data.items.length > 0) {
+                const videos = data.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title,
+                    thumbnail: item.snippet.thumbnails.default.url,
+                }));
+                setVideoList(videos);
             } else {
-                console.error("Error picking file:", err);
+                console.error("No videos found for the search query.");
+                alert("No videos found for the search query.");
             }
+        } catch (error) {
+            console.error("Error fetching YouTube videos:", error);
         }
+    };
+
+    const playVideo = (videoId) => {
+        console.log("Playing video ID:", videoId); // Log the video ID
+        setPlayingVideoId(videoId);
     };
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Offline Music Player</Text>
-            <Button title="Add Music" onPress={selectDirectory} />
+            <Text style={styles.title}>YouTube Music Player</Text>
+            <TextInput
+                style={styles.searchInput}
+                placeholder="Search for music..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+            />
+            <Button title="Search" onPress={searchYouTube} />
             <FlatList
-                data={musicList}
-                keyExtractor={(item, index) => index.toString()}
+                data={videoList}
+                keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <View style={styles.trackContainer}>
-                        <Image source={{ uri: item.albumArt }} style={styles.albumArt} />
-                        <Text style={styles.trackName}>{item.name}</Text>
-                        <Button title="Play" onPress={() => playTrack(item)} />
+                    <View style={styles.videoItem}>
+                        <Image source={{ uri: item.thumbnail }} style={styles.thumbnail} />
+                        <Text style={styles.videoTitle}>{item.title}</Text>
+                        <Button title="Play" onPress={() => playVideo(item.id)} />
                     </View>
                 )}
             />
-            {isPlaying && currentTrack && (
-                <View style={styles.nowPlaying}>
-                    <Text style={styles.nowPlayingText}>Now Playing: {currentTrack.name}</Text>
-                    <Button title="Stop" onPress={stopTrack} />
-                </View>
+            {playingVideoId && (
+                <YouTube
+                    videoId={playingVideoId}
+                    style={styles.youtubePlayer}
+                    play={true}
+                    fullscreen={false}
+                    loop={false}
+                />
             )}
         </View>
     );
@@ -102,27 +96,33 @@ const styles = StyleSheet.create({
         color: '#1DB954',
         marginBottom: 20,
     },
-    trackContainer: {
+    searchInput: {
+        height: 40,
+        borderColor: 'gray',
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+        color: '#FFFFFF',
+    },
+    videoItem: {
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 15,
     },
-    albumArt: {
+    thumbnail: {
         width: 50,
         height: 50,
         borderRadius: 5,
         marginRight: 10,
     },
-    trackName: {
+    videoTitle: {
         flex: 1,
         color: '#FFFFFF',
     },
-    nowPlaying: {
+    youtubePlayer: {
+        alignSelf: 'stretch',
+        height: 300,
         marginTop: 20,
-    },
-    nowPlayingText: {
-        fontSize: 18,
-        color: '#1DB954',
     },
 });
 
