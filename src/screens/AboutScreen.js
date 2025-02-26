@@ -116,7 +116,15 @@ const AboutScreen = ({ navigation, darkMode }) => {
             'Dark mode support',
             'AI Assistant integration',
             'Data persistence',
-            'Clean minimal design'
+            'Clean minimal design',
+            'Full screen note editing',
+            'Custom note backgrounds',
+            'Color coding for notes',
+            'Image attachments',
+            'Rich text formatting',
+            'Bullet points and checklists',
+            'Pin important notes',
+            'Categories and tags'
           ].map((feature, index) => (
             <View key={index} style={styles.featureItem}>
               <Ionicons 

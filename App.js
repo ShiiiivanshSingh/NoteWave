@@ -34,6 +34,8 @@ import {
   MD3DarkTheme,
 } from 'react-native-paper';
 import AboutScreen from './src/screens/AboutScreen';
+import NoteEditor from './src/components/NoteEditor';
+import NotesList from './src/components/NotesList';
 
 const { width, height } = Dimensions.get('window');
 
@@ -80,6 +82,8 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [showNoteEditor, setShowNoteEditor] = useState(false);
+  const [selectedNote, setSelectedNote] = useState(null);
 
   // Group all useRef hooks together
   const fadeAnim = useRef(new Animated.Value(0));
@@ -145,10 +149,25 @@ export default function App() {
     try {
       const storedNotes = await AsyncStorage.getItem('notes');
       if (storedNotes !== null) {
-        setNotes(JSON.parse(storedNotes));
+        const parsedNotes = JSON.parse(storedNotes);
+        // Ensure all notes have the required properties
+        const normalizedNotes = parsedNotes.map(note => ({
+          id: note.id,
+          content: note.content || note.text || '', // Support old format
+          backgroundColor: note.backgroundColor || '#ffffff',
+          color: note.color || '#000000',
+          isPinned: note.isPinned || false,
+          tags: note.tags || [],
+          images: note.images || [],
+          date: note.date,
+          updatedAt: note.updatedAt || note.date,
+          mood: note.mood || ''
+        }));
+        setNotes(normalizedNotes);
       }
     } catch (error) {
       console.log('Error loading notes:', error);
+      setNotes([]); // Set empty array if there's an error
     }
   };
 
@@ -207,41 +226,69 @@ export default function App() {
     }
   };
 
-  // Add a new note or update existing note
-  const handleAddNote = () => {
-    if (note.trim()) {
-      const currentDate = new Date();
-      const formattedDate = currentDate.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+  // Update the note structure in handleAddNote
+  const handleAddNote = (noteData) => {
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-      if (editingId !== null) {
-        const updatedNotes = notes.map(n => 
-          n.id === editingId 
-            ? { ...n, text: note, date: formattedDate } 
-            : n
-        );
-        setNotes(updatedNotes);
-        saveNotes(updatedNotes);
-        setEditingId(null);
-      } else {
-        const newNote = {
-          id: Date.now().toString(),
-          text: note,
-          date: formattedDate,
-          mood: currentMood
-        };
-        const updatedNotes = [...notes, newNote];
-        setNotes(updatedNotes);
-        saveNotes(updatedNotes);
-      }
-      setNote('');
-      setCurrentMood('');
+    if (editingId !== null) {
+      const updatedNotes = notes.map(n => 
+        n.id === editingId 
+          ? { 
+              ...n, 
+              content: noteData.content || '',
+              backgroundColor: noteData.backgroundColor || '#ffffff',
+              color: noteData.color || '#000000',
+              isPinned: noteData.isPinned || false,
+              tags: noteData.tags || [],
+              images: noteData.images || [],
+              date: formattedDate,
+              updatedAt: currentDate,
+              mood: currentMood || ''
+            } 
+          : n
+      );
+      setNotes(updatedNotes);
+      saveNotes(updatedNotes);
+      setEditingId(null);
+    } else {
+      const newNote = {
+        id: Date.now().toString(),
+        content: noteData.content || '',
+        backgroundColor: noteData.backgroundColor || '#ffffff',
+        color: noteData.color || '#000000',
+        isPinned: noteData.isPinned || false,
+        tags: noteData.tags || [],
+        images: noteData.images || [],
+        date: formattedDate,
+        updatedAt: currentDate,
+        mood: currentMood || ''
+      };
+      const updatedNotes = [...notes, newNote];
+      setNotes(updatedNotes);
+      saveNotes(updatedNotes);
     }
+    setNote('');
+    setCurrentMood('');
+    setShowNoteEditor(false);
+  };
+
+  // Add handler for opening note editor
+  const handleOpenNoteEditor = (note = null) => {
+    if (note) {
+      setSelectedNote(note);
+      setEditingId(note.id);
+    } else {
+      setSelectedNote(null);
+      setEditingId(null);
+    }
+    setShowNoteEditor(true);
   };
 
   // Delete a note
@@ -664,7 +711,7 @@ export default function App() {
     );
   };
 
-  // Render Today Screen
+  // Update renderTodayScreen to use NotesList component
   const renderTodayScreen = () => (
     <View style={styles.screenContainer}>
       <View style={styles.dayContainer}>
@@ -715,18 +762,62 @@ export default function App() {
         {notes.length === 0 ? (
           <View style={styles.emptyNotesContainer}>
             <Text style={[styles.emptyNotesText, darkMode && { color: '#fff' }]}>No notes yet</Text>
-            <Text style={[styles.emptyNotesSubtext, darkMode && { color: '#ccc' }]}>Tap the ADD button to create a note</Text>
+            <Text style={[styles.emptyNotesSubtext, darkMode && { color: '#ccc' }]}>
+              Tap the ADD button to create a note
+            </Text>
           </View>
         ) : (
-          <FlatList
-            data={notes}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            style={styles.notesList}
-            contentContainerStyle={styles.notesListContent}
+          <NotesList
+            notes={notes}
+            onNotePress={handleOpenNoteEditor}
+            onNoteLongPress={(note) => {
+              Alert.alert(
+                'Note Options',
+                'What would you like to do?',
+                [
+                  {
+                    text: 'Edit',
+                    onPress: () => handleOpenNoteEditor(note)
+                  },
+                  {
+                    text: 'Delete',
+                    onPress: () => handleDeleteNote(note.id),
+                    style: 'destructive'
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel'
+                  }
+                ]
+              );
+            }}
           />
         )}
       </View>
+
+      {/* Note Editor Modal */}
+      {showNoteEditor && (
+        <NoteEditor
+          note={selectedNote}
+          onSave={handleAddNote}
+          onClose={() => {
+            setShowNoteEditor(false);
+            setSelectedNote(null);
+            setEditingId(null);
+          }}
+        />
+      )}
+
+      {/* Add Floating Action Button */}
+      <FAB
+        icon="plus"
+        style={[
+          styles.fab,
+          darkMode && styles.fabDark
+        ]}
+        color={darkMode ? '#fff' : '#000'}
+        onPress={() => handleOpenNoteEditor()}
+      />
     </View>
   );
 
@@ -880,9 +971,6 @@ export default function App() {
             </View>
           </View>
         </Modal>
-
-        {/* Add Floating Action Button */}
-       
       </SafeAreaView>
     </PaperProvider>
   );
