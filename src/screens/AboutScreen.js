@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,7 +6,8 @@ import {
   ScrollView, 
   Image,
   Linking,
-  TouchableOpacity 
+  TouchableOpacity,
+  BackHandler 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FONTS } from '../constants/fonts';
@@ -35,6 +36,16 @@ const socialLinks = [
 ];
 
 const AboutScreen = ({ navigation, darkMode }) => {
+  // Add back handler for Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      navigation.goBack();
+      return true; // Prevents default behavior (exit app)
+    });
+
+    return () => backHandler.remove(); // Cleanup on unmount
+  }, [navigation]);
+
   return (
     <ScrollView 
       style={[styles.container, darkMode && styles.containerDark]}
