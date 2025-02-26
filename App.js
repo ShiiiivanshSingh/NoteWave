@@ -16,7 +16,8 @@ import {
   ActivityIndicator,
   Linking,
   Image,
-  ImageBackground
+  ImageBackground,
+  Animated
 } from 'react-native';
 import WebView from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,11 +36,10 @@ import {
 
 const { width, height } = Dimensions.get('window');
 
-// Unsplash image URLs
+// stock photos coz why not??
 const UNSPLASH_IMAGES = {
   mainCard: 'https://images.unsplash.com/photo-1517842645767-c639042777db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
   profile: 'https://images.unsplash.com/photo-1508615039623-a25605d2b022?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
-  chatbot: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80'
 };
 
 // Define custom theme
@@ -66,6 +66,7 @@ const darkTheme = {
 };
 
 export default function App() {
+  // Group all useState hooks together at the top
   const [note, setNote] = useState('');
   const [notes, setNotes] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -78,16 +79,39 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  
-  // Get current day and hide splash screen after timeout
+
+  // Group all useRef hooks together
+  const fadeAnim = useRef(new Animated.Value(0));
+  const scaleAnim = useRef(new Animated.Value(0.95));
+
+  // Group all useEffect hooks together
   useEffect(() => {
     const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const today = new Date().getDay();
     setCurrentDay(days[today]);
     
-    // Force hide splash after 2 seconds
+    // Start animations
+    Animated.parallel([
+      Animated.timing(fadeAnim.current, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim.current, {
+        toValue: 1,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      })
+    ]).start();
+    
+    // Hide splash after delay
     const timer = setTimeout(() => {
-      setShowSplash(false);
+      Animated.timing(fadeAnim.current, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => setShowSplash(false));
     }, 2000);
     
     loadUserSettings();
@@ -95,12 +119,27 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
   
-  // Load notes
   useEffect(() => {
     loadNotes();
   }, []);
 
-  // Load notes from storage
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          'Mont-ExtraLightDEMO': require('./assets/Montserrat-Bold.ttf'),
+          'Mont-HeavyDEMO': require('./assets/Mont-HeavyDEMO.otf'),
+          'Montana': require('./assets/Montserrat-Regular.ttf'),
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.log('Error loading fonts:', error);
+      }
+    }
+    loadFonts();
+  }, []);
+
+  // Load notes
   const loadNotes = async () => {
     try {
       const storedNotes = await AsyncStorage.getItem('notes');
@@ -119,9 +158,7 @@ export default function App() {
       if (settings) {
         const parsedSettings = JSON.parse(settings);
         setUserName(parsedSettings.name || 'User');
-        if (parsedSettings.darkMode !== undefined) {
-          setDarkMode(parsedSettings.darkMode);
-        }
+        setDarkMode(parsedSettings.darkMode === true);
         setNotificationEnabled(parsedSettings.notifications !== false);
       }
     } catch (error) {
@@ -153,42 +190,57 @@ export default function App() {
   };
 
   // Toggle dark mode and save the preference
-  const toggleDarkMode = (value) => {
+  const toggleDarkMode = async (value) => {
     setDarkMode(value);
-    setTimeout(() => {
-      saveUserSettings();
-    }, 100);
+    try {
+      const settings = await AsyncStorage.getItem('userSettings');
+      const parsedSettings = settings ? JSON.parse(settings) : {};
+      await AsyncStorage.setItem('userSettings', JSON.stringify({
+        ...parsedSettings,
+        darkMode: value,
+        name: userName,
+        notifications: notificationEnabled
+      }));
+    } catch (error) {
+      console.log('Error saving dark mode setting:', error);
+    }
   };
 
   // Add a new note or update existing note
   const handleAddNote = () => {
-    if (note.trim() === '') {
-      Alert.alert('Error', 'Note cannot be empty');
-      return;
-    }
+    if (note.trim()) {
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
 
-    let updatedNotes = [];
-    
-    if (editingId !== null) {
-      // Update existing note
-      updatedNotes = notes.map(item => 
-        item.id === editingId ? { ...item, text: note } : item
-      );
-      setEditingId(null);
-    } else {
-      // Add new note
-      const newNote = {
-        id: Date.now().toString(),
-        text: note,
-        date: new Date().toLocaleString(),
-        mood: currentMood
-      };
-      updatedNotes = [...notes, newNote];
+      if (editingId !== null) {
+        const updatedNotes = notes.map(n => 
+          n.id === editingId 
+            ? { ...n, text: note, date: formattedDate } 
+            : n
+        );
+        setNotes(updatedNotes);
+        saveNotes(updatedNotes);
+        setEditingId(null);
+      } else {
+        const newNote = {
+          id: Date.now().toString(),
+          text: note,
+          date: formattedDate,
+          mood: currentMood
+        };
+        const updatedNotes = [...notes, newNote];
+        setNotes(updatedNotes);
+        saveNotes(updatedNotes);
+      }
+      setNote('');
+      setCurrentMood('');
     }
-    
-    setNotes(updatedNotes);
-    saveNotes(updatedNotes);
-    setNote('');
   };
 
   // Delete a note
@@ -296,32 +348,6 @@ export default function App() {
     // Focus on the input (you would need a ref for this)
   };
 
-  // Load fonts
-  useEffect(() => {
-    async function loadFonts() {
-      try {
-        await Font.loadAsync({
-          'Mont-ExtraLightDEMO': require('./assets/Montserrat-Bold.ttf'),
-          'Mont-HeavyDEMO': require('./assets/Mont-HeavyDEMO.otf'),
-          'Montana': require('./assets/Montserrat-Regular.ttf'),
-        });
-        setFontsLoaded(true);
-      } catch (error) {
-        console.log('Error loading fonts:', error);
-      }
-    }
-    loadFonts();
-  }, []);
-
-  // Show loading screen while fonts are loading
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#000" />
-      </View>
-    );
-  }
-
   // Render AI Chatbot Screen
   const renderChatbotScreen = () => (
     <View style={[styles.chatbotContainer, darkMode && styles.containerDark]}>
@@ -346,110 +372,295 @@ export default function App() {
     </View>
   );
 
-  // Render User Profile Screen
-  const renderUserScreen = () => (
-    <ScrollView 
-      style={[
-        styles.userScreenContainer, 
-        darkMode && styles.containerDark
-      ]} 
-      contentContainerStyle={styles.userScreenContent}
-    >
-      {/* Projects Section */}
-      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Projects</Text>
-          <TouchableOpacity>
-            <Text style={[styles.sectionAction, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Recents</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.projectsList}>
-          <TouchableOpacity style={[styles.projectItem, darkMode && styles.projectItemDark]}>
-            <View style={[styles.projectIcon, { backgroundColor: '#a29bfe' }]}>
-              <Ionicons name="layers-outline" size={24} color="white" />
-            </View>
-            <View style={styles.projectInfo}>
-              <Text style={[styles.projectTitle, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Web Redesign</Text>
-              <Text style={[styles.projectMeta, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>
-                1 member • {userName}'s First Team • 
-                <Ionicons name="lock-closed" size={12} color={darkMode ? '#888' : '#666'} />
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.projectItem, darkMode && styles.projectItemDark]}>
-            <View style={[styles.projectIcon, { backgroundColor: '#00b894' }]}>
-              <Ionicons name="cube-outline" size={24} color="white" />
-            </View>
-            <View style={styles.projectInfo}>
-              <Text style={[styles.projectTitle, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Product Development</Text>
-              <Text style={[styles.projectMeta, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>
-                1 member • {userName}'s First Team • 
-                <Ionicons name="lock-closed" size={12} color={darkMode ? '#888' : '#666'} />
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.seeAllButton, darkMode && styles.seeAllButtonDark]}>
-            <Text style={[styles.seeAllText, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>See all</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+  // Add these helper functions at the bottom of the file
+  const getNoteStats = (notes) => {
+    return {
+      total: notes.length,
+      thisWeek: notes.filter(note => {
+        const noteDate = new Date(note.date);
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return noteDate >= weekAgo;
+      }).length,
+      withMood: notes.filter(note => note.mood).length
+    };
+  };
 
-      {/* Settings Section */}
-      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Settings</Text>
-        <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Dark Mode</Text>
-          <Switch
-            value={darkMode}
-            onValueChange={toggleDarkMode}
-            trackColor={{ false: "#767577", true: "#4a90e2" }}
-            thumbColor={darkMode ? "#fff" : "#f4f3f4"}
-          />
-        </View>
-        <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Notifications</Text>
-          <Switch
-            value={notificationEnabled}
-            onValueChange={(value) => {
-              setNotificationEnabled(value);
-              setTimeout(saveUserSettings, 100);
-            }}
-            trackColor={{ false: "#767577", true: "#4a90e2" }}
-            thumbColor={notificationEnabled ? "#fff" : "#f4f3f4"}
-          />
-        </View>
-      </View>
+  // Add this helper function to analyze mood patterns
+  const getMoodStats = (notes) => {
+    const moodCounts = notes.reduce((acc, note) => {
+      if (note.mood) {
+        acc[note.mood] = (acc[note.mood] || 0) + 1;
+      }
+      return acc;
+    }, {});
 
-      {/* Statistics Section */}
-      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Statistics</Text>
-        <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>{notes.length}</Text>
-            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Notes</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>
-              {notes.filter(note => note.mood).length}
-            </Text>
-            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Moods</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>7</Text>
-            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Days</Text>
-          </View>
-        </View>
-      </View>
+    // Get the last 7 days of moods with proper date formatting
+    const last7Days = notes
+      .filter(note => note.mood)
+      .slice(-7)
+      .map(note => {
+        // Parse the date string properly
+        const date = new Date(note.date.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
+        return {
+          mood: note.mood,
+          date: date.toLocaleDateString('en-US', { 
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+          })
+        };
+      });
 
-      {/* Logout Button */}
-      <TouchableOpacity 
-        style={[styles.logoutButton, darkMode && styles.logoutButtonDark]}
-        onPress={() => Alert.alert('Logout', 'This would log you out in a real app.')}
+    return {
+      moodCounts,
+      last7Days,
+      mostFrequent: Object.entries(moodCounts)
+        .sort(([,a], [,b]) => b - a)[0]?.[0] || 'No mood data'
+    };
+  };
+
+  // Update the renderUserScreen function
+  const renderUserScreen = () => {
+    const stats = getNoteStats(notes);
+    const moodStats = getMoodStats(notes);
+    const recentNotes = notes.slice(-3).reverse();
+
+    return (
+      <ScrollView 
+        style={[styles.userScreenContainer, darkMode && styles.containerDark]}
+        contentContainerStyle={styles.userScreenContentContainer}
       >
-        <Text style={[styles.logoutButtonText, { fontFamily: FONTS.regular }]}>Logout</Text>
-      </TouchableOpacity>
-    </ScrollView>
-  );
+        {/* User Stats Section */}
+        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+          <Text style={[
+            styles.settingsSectionTitle, 
+            darkMode && styles.textDark,
+            { fontFamily: FONTS.heavy }
+          ]}>Your Activity</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={[
+                styles.statNumber, 
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.heavy }
+              ]}>{stats.total}</Text>
+              <Text style={[
+                styles.statLabel, 
+                darkMode && styles.textGrayDark,
+                { fontFamily: FONTS.light }
+              ]}>Total Notes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[
+                styles.statNumber, 
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.heavy }
+              ]}>{stats.thisWeek}</Text>
+              <Text style={[
+                styles.statLabel, 
+                darkMode && styles.textGrayDark,
+                { fontFamily: FONTS.light }
+              ]}>This Week</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[
+                styles.statNumber, 
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.heavy }
+              ]}>{stats.withMood}</Text>
+              <Text style={[
+                styles.statLabel, 
+                darkMode && styles.textGrayDark,
+                { fontFamily: FONTS.light }
+              ]}>With Mood</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Recent Notes Section */}
+        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+          <View style={styles.sectionHeader}>
+            <Text style={[
+              styles.settingsSectionTitle, 
+              darkMode && styles.textDark,
+              { fontFamily: FONTS.heavy }
+            ]}>Recent Notes</Text>
+            <TouchableOpacity onPress={() => setActiveTab('today')}>
+              <Text style={[
+                styles.sectionAction, 
+                darkMode && styles.textGrayDark,
+                { fontFamily: FONTS.regular }
+              ]}>View All</Text>
+            </TouchableOpacity>
+          </View>
+          {recentNotes.map((note) => (
+            <View key={note.id} style={[styles.recentNoteItem, darkMode && styles.recentNoteItemDark]}>
+              <Text style={[
+                styles.recentNoteText, 
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.regular }
+              ]} numberOfLines={2}>
+                {note.text}
+              </Text>
+              <View style={styles.recentNoteFooter}>
+                <Text style={[
+                  styles.recentNoteDate, 
+                  darkMode && styles.textGrayDark,
+                  { fontFamily: FONTS.light }
+                ]}>{note.date}</Text>
+                {note.mood && (
+                  <View style={styles.moodTag}>
+                    <Ionicons name="heart" size={12} color={darkMode ? '#8E8E8E' : '#666'} />
+                    <Text style={[
+                      styles.moodTagText, 
+                      darkMode && styles.textGrayDark,
+                      { fontFamily: FONTS.regular }
+                    ]}>{note.mood}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Mood Infographic Section */}
+        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+          <Text style={[
+            styles.settingsSectionTitle, 
+            darkMode && styles.textDark,
+            { fontFamily: FONTS.heavy }
+          ]}>Mood Patterns</Text>
+          
+          {/* Most Frequent Mood */}
+          <View style={styles.moodSummary}>
+            <View style={styles.moodSummaryIcon}>
+              <Ionicons 
+                name="heart" 
+                size={24} 
+                color={darkMode ? '#4C6FFF' : '#2E4BFF'} 
+              />
+            </View>
+            <View>
+              <Text style={[
+                styles.moodSummaryTitle,
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.regular }
+              ]}>Most Frequent Mood</Text>
+              <Text style={[
+                styles.moodSummaryValue,
+                darkMode && styles.textDark,
+                { fontFamily: FONTS.heavy }
+              ]}>{moodStats.mostFrequent}</Text>
+            </View>
+          </View>
+
+          {/* Weekly Mood Timeline */}
+          <View style={styles.moodTimeline}>
+            {moodStats.last7Days.map((day, index) => (
+              <View key={index} style={styles.moodTimelineDay}>
+                <Text style={[
+                  styles.moodTimelineDate,
+                  darkMode && styles.textGrayDark,
+                  { fontFamily: FONTS.light }
+                ]}>{day.date}</Text>
+                <View style={[
+                  styles.moodTimelineDot,
+                  { backgroundColor: darkMode ? '#4C6FFF' : '#2E4BFF' }
+                ]} />
+                <Text style={[
+                  styles.moodTimelineMood,
+                  darkMode && styles.textGrayDark,
+                  { fontFamily: FONTS.regular }
+                ]}>{day.mood}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Mood Distribution */}
+          <View style={styles.moodDistribution}>
+            {Object.entries(moodStats.moodCounts).map(([mood, count], index) => (
+              <View key={index} style={styles.moodDistributionItem}>
+                <View style={styles.moodDistributionBar}>
+                  <View 
+                    style={[
+                      styles.moodDistributionFill,
+                      { 
+                        width: `${(count / stats.total) * 100}%`,
+                        backgroundColor: darkMode ? '#4C6FFF' : '#2E4BFF'
+                      }
+                    ]} 
+                  />
+                </View>
+                <Text style={[
+                  styles.moodDistributionLabel,
+                  darkMode && styles.textGrayDark,
+                  { fontFamily: FONTS.regular }
+                ]}>{mood} ({count})</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Settings Section */}
+        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Settings</Text>
+          <View style={styles.settingItem}>
+            <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Dark Mode</Text>
+            <Switch
+              value={darkMode}
+              onValueChange={toggleDarkMode}
+              trackColor={{ false: "#767577", true: "#4a90e2" }}
+              thumbColor={darkMode ? "#fff" : "#f4f3f4"}
+            />
+          </View>
+          <View style={styles.settingItem}>
+            <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Notifications</Text>
+            <Switch
+              value={notificationEnabled}
+              onValueChange={(value) => {
+                setNotificationEnabled(value);
+                setTimeout(saveUserSettings, 100);
+              }}
+              trackColor={{ false: "#767577", true: "#4a90e2" }}
+              thumbColor={notificationEnabled ? "#fff" : "#f4f3f4"}
+            />
+          </View>
+        </View>
+
+        {/* Statistics Section */}
+        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Statistics</Text>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>{notes.length}</Text>
+              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Notes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>
+                {notes.filter(note => note.mood).length}
+              </Text>
+              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Moods</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>7</Text>
+              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Days</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity 
+          style={[styles.logoutButton, darkMode && styles.logoutButtonDark]}
+          onPress={() => Alert.alert('Logout', 'This would log you out in a real app.')}
+        >
+          <Text style={[styles.logoutButtonText, { fontFamily: FONTS.regular }]}>
+            Logout
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
 
   // Render Today Screen
   const renderTodayScreen = () => (
@@ -517,12 +728,32 @@ export default function App() {
     </View>
   );
 
+  // Add the splash screen component
+  const renderSplashScreen = () => (
+    <View style={[styles.splashContainer, darkMode && styles.containerDark]}>
+      <Animated.View 
+        style={[
+          styles.splashContent,
+          {
+            opacity: fadeAnim.current,
+            transform: [{ scale: scaleAnim.current }]
+          }
+        ]}
+      >
+        <Text style={[
+          styles.splashTitle,
+          { fontFamily: FONTS.heavy }
+        ]}>NoteWave</Text>
+        <Text style={[
+          styles.splashSubtitle,
+          { fontFamily: FONTS.light }
+        ]}>Your thoughts, organized.</Text>
+      </Animated.View>
+    </View>
+  );
+
   if (showSplash) {
-    return (
-      <View style={styles.splashContainer}>
-        <Text style={styles.splashText}>NoteWave</Text>
-      </View>
-    );
+    return renderSplashScreen();
   }
 
   return (
@@ -659,14 +890,23 @@ const styles = StyleSheet.create({
   },
   splashContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  splashText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
+  splashContent: {
+    alignItems: 'center',
+  },
+  splashTitle: {
+    fontSize: 48,
+    color: '#4C6FFF',
+    marginBottom: 16,
+    letterSpacing: 1,
+  },
+  splashSubtitle: {
+    fontSize: 18,
+    color: '#666',
+    letterSpacing: 0.5,
   },
   
   // Day display
@@ -960,8 +1200,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  userScreenContent: {
-    padding: 20,
+  userScreenContentContainer: {
+    paddingBottom: 100, // Add padding at bottom to prevent navbar overlap
   },
   userHeaderBackground: {
     height: 200,
@@ -1056,7 +1296,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     alignItems: 'center',
+    marginHorizontal: 16,
     marginTop: 20,
+    marginBottom: 20, // Increase bottom margin
   },
   logoutButtonText: {
     color: '#fff',
@@ -1207,6 +1449,111 @@ const styles = StyleSheet.create({
   },
   logoutButtonDark: {
     backgroundColor: '#c0392b',
+  },
+  recentNoteItem: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  recentNoteItemDark: {
+    backgroundColor: '#2a2a2a',
+  },
+  recentNoteText: {
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  recentNoteFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentNoteDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  moodTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  moodTagText: {
+    fontSize: 12,
+    marginLeft: 4,
+    color: '#666',
+  },
+  moodSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  moodSummaryIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(76, 111, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  moodSummaryTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  moodSummaryValue: {
+    fontSize: 20,
+    color: '#000',
+  },
+  moodTimeline: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  moodTimelineDay: {
+    alignItems: 'center',
+  },
+  moodTimelineDate: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+  },
+  moodTimelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginVertical: 4,
+  },
+  moodTimelineMood: {
+    fontSize: 12,
+    color: '#666',
+  },
+  moodDistribution: {
+    marginTop: 16,
+  },
+  moodDistributionItem: {
+    marginBottom: 12,
+  },
+  moodDistributionBar: {
+    height: 8,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  moodDistributionFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  moodDistributionLabel: {
+    fontSize: 12,
+    color: '#666',
   },
 });
 

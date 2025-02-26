@@ -30,7 +30,8 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "react-native-youtube": "^2.0.2",
-    "react-native-youtube-iframe": "^2.3.0"
+    "react-native-youtube-iframe": "^2.3.0",
+    "react-native-reanimated": "3.6.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
