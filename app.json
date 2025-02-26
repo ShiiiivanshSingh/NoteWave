@@ -1,19 +1,26 @@
 {
   "expo": {
-    "name": "lol",
-    "slug": "lol", 
+    "name": "NoteWave",
+    "slug": "notewave",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.notewave",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to record videos.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to save videos."
@@ -22,8 +29,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.yourcompany.notewave",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"

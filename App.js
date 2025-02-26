@@ -14,12 +14,27 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Linking
+  Linking,
+  Image,
+  ImageBackground
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
+
+// Unsplash image URLs
+const UNSPLASH_IMAGES = {
+  mainCard: 'https://images.unsplash.com/photo-1517842645767-c639042777db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+  profile: 'https://images.unsplash.com/photo-1508615039623-a25605d2b022?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+  chatbot: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80',
+  notes: [
+    'https://images.unsplash.com/photo-1512314889357-e157c22f938d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80',
+    'https://images.unsplash.com/photo-1501504905252-473c47e087f8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80',
+    'https://images.unsplash.com/photo-1517842645767-c639042777db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
+    'https://images.unsplash.com/photo-1483546416237-76fd26bbcdd1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80'
+  ]
+};
 
 export default function App() {
   const [note, setNote] = useState('');
@@ -74,7 +89,9 @@ export default function App() {
       if (settings) {
         const parsedSettings = JSON.parse(settings);
         setUserName(parsedSettings.name || 'User');
-        setDarkMode(parsedSettings.darkMode || false);
+        if (parsedSettings.darkMode !== undefined) {
+          setDarkMode(parsedSettings.darkMode);
+        }
         setNotificationEnabled(parsedSettings.notifications !== false);
       }
     } catch (error) {
@@ -96,13 +113,21 @@ export default function App() {
     try {
       const settings = {
         name: userName,
-        darkMode,
+        darkMode: darkMode,
         notifications: notificationEnabled
       };
       await AsyncStorage.setItem('userSettings', JSON.stringify(settings));
     } catch (error) {
       console.log('Error saving user settings:', error);
     }
+  };
+
+  // Toggle dark mode and save the preference
+  const toggleDarkMode = (value) => {
+    setDarkMode(value);
+    setTimeout(() => {
+      saveUserSettings();
+    }, 100);
   };
 
   // Add a new note or update existing note
@@ -205,21 +230,37 @@ export default function App() {
 
   // Render AI Chatbot Screen
   const renderChatbotScreen = () => (
-    <View style={styles.chatbotContainer}>
-      <View style={styles.chatbotHeader}>
+    <View style={[
+      styles.chatbotContainer, 
+      darkMode ? { backgroundColor: '#121212' } : { backgroundColor: '#fff' }
+    ]}>
+      <View style={[
+        styles.chatbotHeader,
+        darkMode ? { backgroundColor: '#1a1a1a', borderBottomColor: '#333' } : { backgroundColor: '#fff', borderBottomColor: '#eee' }
+      ]}>
         <Text style={[styles.chatbotTitle, darkMode && styles.textDark]}>AI Assistant</Text>
       </View>
       
-      <View style={styles.chatbotContent}>
-        <Text style={[styles.chatbotDescription, darkMode && styles.textDark]}>
+      <View style={[
+        styles.chatbotContent,
+        darkMode ? { backgroundColor: '#121212' } : { backgroundColor: '#fff' }
+      ]}>
+        <Text style={[
+          styles.chatbotDescription, 
+          darkMode ? { color: '#ccc' } : { color: '#333' }
+        ]}>
           Our AI assistant can help you organize your thoughts, generate ideas, and answer questions.
         </Text>
         
-        <View style={styles.chatbotImagePlaceholder}>
-          <Ionicons name="chatbubbles-outline" size={80} color={darkMode ? "#4a90e2" : "#000"} />
-        </View>
+        <Image 
+          source={{ uri: UNSPLASH_IMAGES.chatbot }}
+          style={styles.chatbotImage}
+        />
         
-        <Text style={[styles.chatbotInstructions, darkMode && styles.textDark]}>
+        <Text style={[
+          styles.chatbotInstructions,
+          darkMode ? { color: '#ccc' } : { color: '#333' }
+        ]}>
           Tap the button below to chat with our AI assistant.
         </Text>
         
@@ -236,18 +277,43 @@ export default function App() {
   // Render User Profile Screen
   const renderUserScreen = () => (
     <ScrollView style={styles.userScreenContainer} contentContainerStyle={styles.userScreenContent}>
-      <View style={styles.userHeader}>
-        <View style={styles.userAvatarContainer}>
-          <View style={styles.userAvatar}>
-            <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+      <ImageBackground 
+        source={{ uri: UNSPLASH_IMAGES.profile }}
+        style={styles.userHeaderBackground}
+        imageStyle={styles.userHeaderBackgroundImage}
+      >
+        <View style={[
+          styles.userHeaderOverlay,
+          { backgroundColor: 'rgba(0, 0, 0, 0.5)' } // Fixed black overlay
+        ]}>
+          <View style={styles.userHeader}>
+            <View style={styles.userAvatarContainer}>
+              <View style={styles.userAvatar}>
+                <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
+              </View>
+            </View>
+            <Text style={[styles.userName, { color: '#fff' }]}>{userName}</Text>
+            <Text style={[styles.userSubtitle, { color: '#fff' }]}>Your personal notes assistant</Text>
           </View>
         </View>
-        <Text style={[styles.userName, darkMode && styles.textDark]}>{userName}</Text>
-        <Text style={styles.userSubtitle}>Your personal notes assistant</Text>
+      </ImageBackground>
+      
+      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Appearance</Text>
+        
+        <View style={styles.settingItem}>
+          <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Dark Mode</Text>
+          <Switch
+            value={darkMode}
+            onValueChange={toggleDarkMode}
+            trackColor={{ false: "#767577", true: "#4a90e2" }}
+            thumbColor={darkMode ? "#fff" : "#f4f3f4"}
+          />
+        </View>
       </View>
       
       <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Profile</Text>
+        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Account</Text>
         
         <View style={styles.settingItem}>
           <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Name</Text>
@@ -255,22 +321,7 @@ export default function App() {
             style={[styles.settingInput, darkMode && styles.inputDark]}
             value={userName}
             onChangeText={setUserName}
-            onBlur={saveUserSettings}
-          />
-        </View>
-      </View>
-      
-      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Preferences</Text>
-        
-        <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Dark Mode</Text>
-          <Switch
-            value={darkMode}
-            onValueChange={(value) => {
-              setDarkMode(value);
-              setTimeout(saveUserSettings, 100);
-            }}
+            onEndEditing={saveUserSettings}
           />
         </View>
         
@@ -282,6 +333,8 @@ export default function App() {
               setNotificationEnabled(value);
               setTimeout(saveUserSettings, 100);
             }}
+            trackColor={{ false: "#767577", true: "#4a90e2" }}
+            thumbColor={notificationEnabled ? "#fff" : "#f4f3f4"}
           />
         </View>
       </View>
@@ -291,84 +344,119 @@ export default function App() {
         
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{notes.length}</Text>
-            <Text style={styles.statLabel}>Notes</Text>
+            <Text style={[styles.statNumber, darkMode && styles.textDark]}>{notes.length}</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Notes</Text>
           </View>
           
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {notes.reduce((total, note) => total + note.text.length, 0)}
+            <Text style={[styles.statNumber, darkMode && styles.textDark]}>
+              {notes.filter(note => note.mood).length}
             </Text>
-            <Text style={styles.statLabel}>Characters</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Moods</Text>
           </View>
           
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>
-              {Math.floor((Date.now() - (notes[0]?.date ? new Date(notes[0].date).getTime() : Date.now())) / (1000 * 60 * 60 * 24))}
-            </Text>
-            <Text style={styles.statLabel}>Days</Text>
+            <Text style={[styles.statNumber, darkMode && styles.textDark]}>7</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Days</Text>
           </View>
         </View>
       </View>
       
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutButtonText}>Log Out</Text>
+      <TouchableOpacity 
+        style={styles.logoutButton}
+        onPress={() => Alert.alert('Logout', 'This would log you out in a real app.')}
+      >
+        <Text style={styles.logoutButtonText}>Logout</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 
   // Render Today Screen
   const renderTodayScreen = () => (
-    <>
-      {/* Day display */}
+    <View style={styles.screenContainer}>
       <View style={styles.dayContainer}>
-        <Text style={[styles.dayText, darkMode && styles.textDark]}>{currentDay}.</Text>
+        <Text style={[
+          styles.dayText, 
+          darkMode && styles.textDark
+        ]}>
+          {currentDay}.
+        </Text>
       </View>
       
-      {/* Main card */}
-      <View style={styles.mainCard}>
-        <View style={styles.mainCardContent}>
-          <Text style={styles.mainCardTitle}>Let's begin your day</Text>
-          
-          <TouchableOpacity 
-            style={styles.feelingButton}
-            onPress={() => setShowMoodModal(true)}
-          >
-            <Text style={styles.feelingButtonText}>
-              {currentMood ? `I feel ${currentMood}` : 'How do you feel?'}
-            </Text>
-          </TouchableOpacity>
-          
-          <View style={styles.inspirationContainer}>
-            {/* Empty for now as requested */}
+      {/* Enhanced Main card with background image */}
+      <ImageBackground 
+        source={{ uri: UNSPLASH_IMAGES.mainCard }} 
+        style={styles.mainCard}
+        imageStyle={styles.mainCardImage}
+      >
+        <View style={styles.mainCardOverlay}>
+          <View style={styles.mainCardContent}>
+            <Text style={styles.mainCardTitle}>Let's begin your day</Text>
+            
+            <TouchableOpacity 
+              style={styles.feelingButton}
+              onPress={() => setShowMoodModal(true)}
+            >
+              <Text style={styles.feelingButtonText}>
+                {currentMood ? `I feel ${currentMood}` : 'How do you feel?'}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.inspirationContainer}>
+              {/* Empty for now as requested */}
+            </View>
           </View>
         </View>
-        
-        <View style={styles.mainCardImageContainer}>
-          <View style={styles.mainCardImage} />
-        </View>
-      </View>
+      </ImageBackground>
       
       {/* Notes section */}
       <View style={styles.notesSection}>
-        <Text style={[styles.sectionTitle, darkMode && styles.textDark]}>notes.</Text>
+        <Text style={styles.sectionTitle}>notes.</Text>
         
         {notes.length === 0 ? (
           <View style={styles.emptyNotesContainer}>
-            <Text style={[styles.emptyNotesText, darkMode && styles.textDark]}>No notes yet</Text>
+            <Text style={styles.emptyNotesText}>No notes yet</Text>
             <Text style={styles.emptyNotesSubtext}>Tap the + button to create a note</Text>
           </View>
         ) : (
           <FlatList
             data={notes}
-            renderItem={renderItem}
+            renderItem={({ item, index }) => (
+              <View style={styles.noteItem}>
+                {index % 3 === 0 && (
+                  <Image 
+                    source={{ uri: UNSPLASH_IMAGES.notes[index % UNSPLASH_IMAGES.notes.length] }} 
+                    style={styles.noteImage}
+                  />
+                )}
+                <View style={styles.noteContent}>
+                  <Text style={styles.noteText}>{item.text}</Text>
+                  <Text style={styles.noteDate}>{item.date}</Text>
+                  {item.mood && <Text style={styles.noteMood}>Mood: {item.mood}</Text>}
+                </View>
+                <View style={styles.noteActions}>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.editButton]} 
+                    onPress={() => handleEditNote(item.id)}
+                  >
+                    <Text style={styles.buttonText}>Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionButton, styles.deleteButton]} 
+                    onPress={() => handleDeleteNote(item.id)}
+                  >
+                    <Text style={styles.buttonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             keyExtractor={item => item.id}
             style={styles.notesList}
             contentContainerStyle={styles.notesListContent}
           />
         )}
       </View>
-    </>
+    </View>
   );
 
   if (showSplash) {
@@ -530,15 +618,21 @@ const styles = StyleSheet.create({
   
   // Main card
   mainCard: {
-    backgroundColor: '#000',
     borderRadius: 16,
     margin: 16,
+    height: 200,
+    overflow: 'hidden',
+  },
+  mainCardImage: {
+    borderRadius: 16,
+  },
+  mainCardOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flex: 1,
     padding: 24,
-    flexDirection: 'row',
   },
   mainCardContent: {
     flex: 1,
-    paddingRight: 16,
   },
   mainCardTitle: {
     fontSize: 24,
@@ -567,16 +661,6 @@ const styles = StyleSheet.create({
   },
   inspirationContainer: {
     marginTop: 16,
-  },
-  mainCardImageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mainCardImage: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#333',
-    borderRadius: 10,
   },
   
   // Section styles
@@ -937,13 +1021,10 @@ const styles = StyleSheet.create({
   // Updated chatbot styles
   chatbotContainer: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   chatbotHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
   },
   chatbotTitle: {
     fontSize: 20,
@@ -960,22 +1041,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 30,
-    color: '#333',
   },
-  chatbotImagePlaceholder: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 30,
+  chatbotImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    marginVertical: 20,
   },
   chatbotInstructions: {
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 20,
-    color: '#333',
   },
   chatbotButton: {
     backgroundColor: '#000',
@@ -987,5 +1063,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
+  },
+  
+  // Updated styles for main card with background image
+  screenContainer: {
+    flex: 1,
+  },
+  
+  // Note item with image
+  noteImage: {
+    height: 120,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: 12,
+  },
+  
+  // User profile with background image
+  userHeaderBackground: {
+    height: 200,
+  },
+  userHeaderBackgroundImage: {
+    opacity: 0.8,
+  },
+  userHeaderOverlay: {
+    height: 200,
+    justifyContent: 'center',
   },
 });
