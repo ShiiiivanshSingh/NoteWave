@@ -33,6 +33,7 @@ import {
   MD3LightTheme,
   MD3DarkTheme,
 } from 'react-native-paper';
+import AboutScreen from './src/screens/AboutScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -386,7 +387,7 @@ export default function App() {
     };
   };
 
-  // Add this helper function to analyze mood patterns
+  // Update the helper function to analyze mood patterns without dates
   const getMoodStats = (notes) => {
     const moodCounts = notes.reduce((acc, note) => {
       if (note.mood) {
@@ -395,22 +396,13 @@ export default function App() {
       return acc;
     }, {});
 
-    // Get the last 7 days of moods with proper date formatting
+    // Get the last 7 moods without dates
     const last7Days = notes
       .filter(note => note.mood)
       .slice(-7)
-      .map(note => {
-        // Parse the date string properly
-        const date = new Date(note.date.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$3-$2-$1'));
-        return {
-          mood: note.mood,
-          date: date.toLocaleDateString('en-US', { 
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric'
-          })
-        };
-      });
+      .map(note => ({
+        mood: note.mood
+      }));
 
     return {
       moodCounts,
@@ -556,14 +548,14 @@ export default function App() {
           </View>
 
           {/* Weekly Mood Timeline */}
+          <Text style={[
+            styles.moodSummaryTitle,
+            darkMode && styles.textDark,
+            { fontFamily: FONTS.regular }
+          ]}>Weekly Mood Timeline</Text>
           <View style={styles.moodTimeline}>
             {moodStats.last7Days.map((day, index) => (
               <View key={index} style={styles.moodTimelineDay}>
-                <Text style={[
-                  styles.moodTimelineDate,
-                  darkMode && styles.textGrayDark,
-                  { fontFamily: FONTS.light }
-                ]}>{day.date}</Text>
                 <View style={[
                   styles.moodTimelineDot,
                   { backgroundColor: darkMode ? '#4C6FFF' : '#2E4BFF' }
@@ -658,6 +650,16 @@ export default function App() {
             Logout
           </Text>
         </TouchableOpacity>
+
+        {/* About Button */}
+        <TouchableOpacity 
+          style={[styles.aboutButton, darkMode && styles.aboutButtonDark]}
+          onPress={() => setActiveTab('about')}
+        >
+          <Text style={[styles.aboutButtonText, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>
+            About NoteWave
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     );
   };
@@ -671,7 +673,7 @@ export default function App() {
           { fontFamily: FONTS.heavy },
           darkMode && styles.textDark
         ]}>
-          {currentDay}.
+          it's {currentDay}.
         </Text>
       </View>
       
@@ -765,45 +767,48 @@ export default function App() {
         {activeTab === 'today' && renderTodayScreen()}
         {activeTab === 'you' && renderUserScreen()}
         {activeTab === 'chatbot' && renderChatbotScreen()}
+        {activeTab === 'about' && <AboutScreen navigation={{ goBack: () => setActiveTab('you') }} darkMode={darkMode} />}
         
         {/* Modern Minimal Navbar */}
-        <View style={[styles.modernNavbar, darkMode && styles.navbarDark]}>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => setActiveTab('today')}
-          >
-            <Ionicons 
-              name="today-outline" 
-              size={24} 
-              color={activeTab === 'today' ? (darkMode ? '#fff' : '#000') : '#999'} 
-            />
-            {activeTab === 'today' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => setActiveTab('chatbot')}
-          >
-            <Ionicons 
-              name="chatbubble-ellipses-outline" 
-              size={24} 
-              color={activeTab === 'chatbot' ? (darkMode ? '#fff' : '#000') : '#999'} 
-            />
-            {activeTab === 'chatbot' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => setActiveTab('you')}
-          >
-            <Ionicons 
-              name="person-outline" 
-              size={24} 
-              color={activeTab === 'you' ? (darkMode ? '#fff' : '#000') : '#999'} 
-            />
-            {activeTab === 'you' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-          </TouchableOpacity>
-        </View>
+        {activeTab !== 'about' && (
+          <View style={[styles.modernNavbar, darkMode && styles.navbarDark]}>
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => setActiveTab('today')}
+            >
+              <Ionicons 
+                name="today-outline" 
+                size={24} 
+                color={activeTab === 'today' ? (darkMode ? '#fff' : '#000') : '#999'} 
+              />
+              {activeTab === 'today' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => setActiveTab('chatbot')}
+            >
+              <Ionicons 
+                name="chatbubble-ellipses-outline" 
+                size={24} 
+                color={activeTab === 'chatbot' ? (darkMode ? '#fff' : '#000') : '#999'} 
+              />
+              {activeTab === 'chatbot' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => setActiveTab('you')}
+            >
+              <Ionicons 
+                name="person-outline" 
+                size={24} 
+                color={activeTab === 'you' ? (darkMode ? '#fff' : '#000') : '#999'} 
+              />
+              {activeTab === 'you' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
+            </TouchableOpacity>
+          </View>
+        )}
         
         {/* Input container - only show on Today tab */}
         {activeTab === 'today' && (
@@ -918,6 +923,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: '#000',
+    textTransform: 'lowercase',
   },
   
   // Main card
@@ -1520,11 +1526,6 @@ const styles = StyleSheet.create({
   moodTimelineDay: {
     alignItems: 'center',
   },
-  moodTimelineDate: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
   moodTimelineDot: {
     width: 8,
     height: 8,
@@ -1554,6 +1555,22 @@ const styles = StyleSheet.create({
   moodDistributionLabel: {
     fontSize: 12,
     color: '#666',
+  },
+  aboutButton: {
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 32,
+  },
+  aboutButtonDark: {
+    backgroundColor: 'transparent',
+  },
+  aboutButtonText: {
+    color: '#666',
+    fontSize: 14,
   },
 });
 
