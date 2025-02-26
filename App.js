@@ -20,6 +20,17 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import * as Font from 'expo-font';
+import { FONTS } from './src/constants/fonts';
+import { 
+  Surface, 
+  IconButton, 
+  FAB, 
+  Portal,
+  Provider as PaperProvider,
+  MD3LightTheme,
+  MD3DarkTheme,
+} from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,13 +38,30 @@ const { width, height } = Dimensions.get('window');
 const UNSPLASH_IMAGES = {
   mainCard: 'https://images.unsplash.com/photo-1517842645767-c639042777db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
   profile: 'https://images.unsplash.com/photo-1508615039623-a25605d2b022?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
-  chatbot: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80',
-  notes: [
-    'https://images.unsplash.com/photo-1512314889357-e157c22f938d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80',
-    'https://images.unsplash.com/photo-1501504905252-473c47e087f8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1074&q=80',
-    'https://images.unsplash.com/photo-1517842645767-c639042777db?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80',
-    'https://images.unsplash.com/photo-1483546416237-76fd26bbcdd1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80'
-  ]
+  chatbot: 'https://images.unsplash.com/photo-1531746790731-6c087fecd65a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1169&q=80'
+};
+
+// Define custom theme
+const lightTheme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#4C6FFF',
+    secondary: '#FF4C4C',
+    surface: '#FFFFFF',
+    background: '#F5F7FA',
+  },
+};
+
+const darkTheme = {
+  ...MD3DarkTheme,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: '#2E4BFF',
+    secondary: '#CC3333',
+    surface: '#1A1A1A',
+    background: '#121212',
+  },
 };
 
 export default function App() {
@@ -48,6 +76,7 @@ export default function App() {
   const [userName, setUserName] = useState('User');
   const [darkMode, setDarkMode] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
   
   // Get current day and hide splash screen after timeout
   useEffect(() => {
@@ -197,27 +226,65 @@ export default function App() {
 
   // Render each note item
   const renderItem = ({ item }) => (
-    <View style={styles.noteItem}>
+    <Surface 
+      style={[
+        styles.noteItem,
+        darkMode && styles.noteItemDark,
+        { elevation: 2 }
+      ]}
+    >
       <View style={styles.noteContent}>
-        <Text style={styles.noteText}>{item.text}</Text>
-        <Text style={styles.noteDate}>{item.date}</Text>
-        {item.mood && <Text style={styles.noteMood}>Mood: {item.mood}</Text>}
+        <Text style={[
+          styles.noteText, 
+          { fontFamily: FONTS.regular },
+          darkMode && styles.textDark
+        ]}>{item.text}</Text>
+        
+        <View style={styles.noteMetaContainer}>
+          <Text style={[
+            styles.noteDate, 
+            { fontFamily: FONTS.light },
+            darkMode && styles.textGrayDark
+          ]}>{item.date}</Text>
+          
+          {item.mood && (
+            <View style={styles.moodContainer}>
+              <IconButton
+                icon="heart"
+                size={16}
+                iconColor={darkMode ? '#8E8E8E' : '#666'}
+              />
+              <Text style={[
+                styles.noteMood, 
+                { fontFamily: FONTS.regular },
+                darkMode && styles.textGrayDark
+              ]}>{item.mood}</Text>
+            </View>
+          )}
+        </View>
       </View>
+
       <View style={styles.noteActions}>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.editButton]} 
+        <IconButton
+          icon="pencil"
+          mode="contained"
+          containerColor={darkMode ? '#2E4BFF' : '#4C6FFF'}
+          iconColor="#FFF"
+          size={20}
           onPress={() => handleEditNote(item.id)}
-        >
-          <Text style={styles.buttonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.deleteButton]} 
+          style={styles.actionButton}
+        />
+        <IconButton
+          icon="delete"
+          mode="contained"
+          containerColor={darkMode ? '#CC3333' : '#FF4C4C'}
+          iconColor="#FFF"
+          size={20}
           onPress={() => handleDeleteNote(item.id)}
-        >
-          <Text style={styles.buttonText}>Delete</Text>
-        </TouchableOpacity>
+          style={styles.actionButton}
+        />
       </View>
-    </View>
+    </Surface>
   );
 
   // Add this new function for the floating action button
@@ -227,6 +294,32 @@ export default function App() {
     setCurrentMood('');
     // Focus on the input (you would need a ref for this)
   };
+
+  // Load fonts
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          'Mont-ExtraLightDEMO': require('./assets/Montserrat-Bold.ttf'),
+          'Mont-HeavyDEMO': require('./assets/Mont-HeavyDEMO.otf'),
+          'Montana': require('./assets/Montserrat-Regular.ttf'),
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.log('Error loading fonts:', error);
+      }
+    }
+    loadFonts();
+  }, []);
+
+  // Show loading screen while fonts are loading
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
 
   // Render AI Chatbot Screen
   const renderChatbotScreen = () => (
@@ -238,7 +331,7 @@ export default function App() {
         styles.chatbotHeader,
         darkMode ? { backgroundColor: '#1a1a1a', borderBottomColor: '#333' } : { backgroundColor: '#fff', borderBottomColor: '#eee' }
       ]}>
-        <Text style={[styles.chatbotTitle, darkMode && styles.textDark]}>AI Assistant</Text>
+        <Text style={[styles.chatbotTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>AI Assistant</Text>
       </View>
       
       <View style={[
@@ -247,7 +340,8 @@ export default function App() {
       ]}>
         <Text style={[
           styles.chatbotDescription, 
-          darkMode ? { color: '#ccc' } : { color: '#333' }
+          darkMode ? { color: '#ccc' } : { color: '#333' },
+          { fontFamily: FONTS.regular }
         ]}>
           Our AI assistant can help you organize your thoughts, generate ideas, and answer questions.
         </Text>
@@ -259,7 +353,8 @@ export default function App() {
         
         <Text style={[
           styles.chatbotInstructions,
-          darkMode ? { color: '#ccc' } : { color: '#333' }
+          darkMode ? { color: '#ccc' } : { color: '#333' },
+          { fontFamily: FONTS.regular }
         ]}>
           Tap the button below to chat with our AI assistant.
         </Text>
@@ -268,7 +363,7 @@ export default function App() {
           style={[styles.chatbotButton, darkMode && styles.buttonDark]}
           onPress={() => Linking.openURL('https://www.chatbase.co/chatbot-iframe/gcmQxoyUWU8k1Nl78Fz-F')}
         >
-          <Text style={styles.chatbotButtonText}>Open AI Assistant</Text>
+          <Text style={[styles.chatbotButtonText, { fontFamily: FONTS.regular }]}>Open AI Assistant</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -276,33 +371,57 @@ export default function App() {
 
   // Render User Profile Screen
   const renderUserScreen = () => (
-    <ScrollView style={styles.userScreenContainer} contentContainerStyle={styles.userScreenContent}>
-      <ImageBackground 
-        source={{ uri: UNSPLASH_IMAGES.profile }}
-        style={styles.userHeaderBackground}
-        imageStyle={styles.userHeaderBackgroundImage}
-      >
-        <View style={[
-          styles.userHeaderOverlay,
-          { backgroundColor: 'rgba(0, 0, 0, 0.5)' } // Fixed black overlay
-        ]}>
-          <View style={styles.userHeader}>
-            <View style={styles.userAvatarContainer}>
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>{userName.charAt(0).toUpperCase()}</Text>
-              </View>
-            </View>
-            <Text style={[styles.userName, { color: '#fff' }]}>{userName}</Text>
-            <Text style={[styles.userSubtitle, { color: '#fff' }]}>Your personal notes assistant</Text>
-          </View>
-        </View>
-      </ImageBackground>
-      
+    <ScrollView 
+      style={[
+        styles.userScreenContainer, 
+        darkMode && styles.containerDark
+      ]} 
+      contentContainerStyle={styles.userScreenContent}
+    >
+      {/* Projects Section */}
       <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Appearance</Text>
-        
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Projects</Text>
+          <TouchableOpacity>
+            <Text style={[styles.sectionAction, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Recents</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.projectsList}>
+          <TouchableOpacity style={[styles.projectItem, darkMode && styles.projectItemDark]}>
+            <View style={[styles.projectIcon, { backgroundColor: '#a29bfe' }]}>
+              <Ionicons name="layers-outline" size={24} color="white" />
+            </View>
+            <View style={styles.projectInfo}>
+              <Text style={[styles.projectTitle, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Web Redesign</Text>
+              <Text style={[styles.projectMeta, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>
+                1 member • {userName}'s First Team • 
+                <Ionicons name="lock-closed" size={12} color={darkMode ? '#888' : '#666'} />
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.projectItem, darkMode && styles.projectItemDark]}>
+            <View style={[styles.projectIcon, { backgroundColor: '#00b894' }]}>
+              <Ionicons name="cube-outline" size={24} color="white" />
+            </View>
+            <View style={styles.projectInfo}>
+              <Text style={[styles.projectTitle, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Product Development</Text>
+              <Text style={[styles.projectMeta, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>
+                1 member • {userName}'s First Team • 
+                <Ionicons name="lock-closed" size={12} color={darkMode ? '#888' : '#666'} />
+              </Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.seeAllButton, darkMode && styles.seeAllButtonDark]}>
+            <Text style={[styles.seeAllText, darkMode && styles.textGrayDark, { fontFamily: FONTS.regular }]}>See all</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Settings Section */}
+      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
+        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Settings</Text>
         <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Dark Mode</Text>
+          <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Dark Mode</Text>
           <Switch
             value={darkMode}
             onValueChange={toggleDarkMode}
@@ -310,23 +429,8 @@ export default function App() {
             thumbColor={darkMode ? "#fff" : "#f4f3f4"}
           />
         </View>
-      </View>
-      
-      <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Account</Text>
-        
         <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Name</Text>
-          <TextInput
-            style={[styles.settingInput, darkMode && styles.inputDark]}
-            value={userName}
-            onChangeText={setUserName}
-            onEndEditing={saveUserSettings}
-          />
-        </View>
-        
-        <View style={styles.settingItem}>
-          <Text style={[styles.settingLabel, darkMode && styles.textDark]}>Notifications</Text>
+          <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Notifications</Text>
           <Switch
             value={notificationEnabled}
             onValueChange={(value) => {
@@ -338,35 +442,34 @@ export default function App() {
           />
         </View>
       </View>
-      
+
+      {/* Statistics Section */}
       <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark]}>Statistics</Text>
-        
+        <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Statistics</Text>
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark]}>{notes.length}</Text>
-            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Notes</Text>
+            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>{notes.length}</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Notes</Text>
           </View>
-          
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark]}>
+            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>
               {notes.filter(note => note.mood).length}
             </Text>
-            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Moods</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Moods</Text>
           </View>
-          
           <View style={styles.statItem}>
-            <Text style={[styles.statNumber, darkMode && styles.textDark]}>7</Text>
-            <Text style={[styles.statLabel, darkMode && styles.textDark]}>Days</Text>
+            <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>7</Text>
+            <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Days</Text>
           </View>
         </View>
       </View>
-      
+
+      {/* Logout Button */}
       <TouchableOpacity 
-        style={styles.logoutButton}
+        style={[styles.logoutButton, darkMode && styles.logoutButtonDark]}
         onPress={() => Alert.alert('Logout', 'This would log you out in a real app.')}
       >
-        <Text style={styles.logoutButtonText}>Logout</Text>
+        <Text style={[styles.logoutButtonText, { fontFamily: FONTS.regular }]}>Logout</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -377,6 +480,7 @@ export default function App() {
       <View style={styles.dayContainer}>
         <Text style={[
           styles.dayText, 
+          { fontFamily: FONTS.heavy },
           darkMode && styles.textDark
         ]}>
           {currentDay}.
@@ -391,13 +495,19 @@ export default function App() {
       >
         <View style={styles.mainCardOverlay}>
           <View style={styles.mainCardContent}>
-            <Text style={styles.mainCardTitle}>Let's begin your day</Text>
+            <Text style={[
+              styles.mainCardTitle,
+              { fontFamily: FONTS.heavy }
+            ]}>Let's begin your day</Text>
             
             <TouchableOpacity 
               style={styles.feelingButton}
               onPress={() => setShowMoodModal(true)}
             >
-              <Text style={styles.feelingButtonText}>
+              <Text style={[
+                styles.feelingButtonText,
+                { fontFamily: FONTS.regular }
+              ]}>
                 {currentMood ? `I feel ${currentMood}` : 'How do you feel?'}
               </Text>
             </TouchableOpacity>
@@ -411,45 +521,16 @@ export default function App() {
       
       {/* Notes section */}
       <View style={styles.notesSection}>
-        <Text style={styles.sectionTitle}>notes.</Text>
-        
+        <Text style={[styles.sectionTitle, darkMode && { color: '#fff' }]}>notes.</Text>
         {notes.length === 0 ? (
           <View style={styles.emptyNotesContainer}>
-            <Text style={styles.emptyNotesText}>No notes yet</Text>
-            <Text style={styles.emptyNotesSubtext}>Tap the + button to create a note</Text>
+            <Text style={[styles.emptyNotesText, darkMode && { color: '#fff' }]}>No notes yet</Text>
+            <Text style={[styles.emptyNotesSubtext, darkMode && { color: '#ccc' }]}>Tap the ADD button to create a note</Text>
           </View>
         ) : (
           <FlatList
             data={notes}
-            renderItem={({ item, index }) => (
-              <View style={styles.noteItem}>
-                {index % 3 === 0 && (
-                  <Image 
-                    source={{ uri: UNSPLASH_IMAGES.notes[index % UNSPLASH_IMAGES.notes.length] }} 
-                    style={styles.noteImage}
-                  />
-                )}
-                <View style={styles.noteContent}>
-                  <Text style={styles.noteText}>{item.text}</Text>
-                  <Text style={styles.noteDate}>{item.date}</Text>
-                  {item.mood && <Text style={styles.noteMood}>Mood: {item.mood}</Text>}
-                </View>
-                <View style={styles.noteActions}>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.editButton]} 
-                    onPress={() => handleEditNote(item.id)}
-                  >
-                    <Text style={styles.buttonText}>Edit</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.deleteButton]} 
-                    onPress={() => handleDeleteNote(item.id)}
-                  >
-                    <Text style={styles.buttonText}>Delete</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            renderItem={renderItem}
             keyExtractor={item => item.id}
             style={styles.notesList}
             contentContainerStyle={styles.notesListContent}
@@ -468,123 +549,129 @@ export default function App() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, darkMode && { backgroundColor: '#121212' }]}>
-      <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
-      
-      {/* Main Content Area */}
-      {activeTab === 'today' && renderTodayScreen()}
-      {activeTab === 'you' && renderUserScreen()}
-      {activeTab === 'chatbot' && renderChatbotScreen()}
-      
-      {/* Modern Minimal Navbar */}
-      <View style={[styles.modernNavbar, darkMode && styles.navbarDark]}>
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => setActiveTab('today')}
-        >
-          <Ionicons 
-            name="today-outline" 
-            size={24} 
-            color={activeTab === 'today' ? (darkMode ? '#fff' : '#000') : '#999'} 
-          />
-          {activeTab === 'today' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-        </TouchableOpacity>
+    <PaperProvider theme={darkMode ? darkTheme : lightTheme}>
+      <SafeAreaView style={[styles.container, darkMode && { backgroundColor: '#121212' }]}>
+        <StatusBar barStyle={darkMode ? "light-content" : "dark-content"} />
         
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => setActiveTab('chatbot')}
-        >
-          <Ionicons 
-            name="chatbubble-ellipses-outline" 
-            size={24} 
-            color={activeTab === 'chatbot' ? (darkMode ? '#fff' : '#000') : '#999'} 
-          />
-          {activeTab === 'chatbot' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-        </TouchableOpacity>
+        {/* Main Content Area */}
+        {activeTab === 'today' && renderTodayScreen()}
+        {activeTab === 'you' && renderUserScreen()}
+        {activeTab === 'chatbot' && renderChatbotScreen()}
         
-        <TouchableOpacity 
-          style={styles.navItem}
-          onPress={() => setActiveTab('you')}
-        >
-          <Ionicons 
-            name="person-outline" 
-            size={24} 
-            color={activeTab === 'you' ? (darkMode ? '#fff' : '#000') : '#999'} 
-          />
-          {activeTab === 'you' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
-        </TouchableOpacity>
-      </View>
-      
-      {/* Input container - only show on Today tab */}
-      {activeTab === 'today' && (
-        <View style={[styles.inputContainer, darkMode && styles.inputContainerDark]}>
-          <TextInput
-            style={[styles.input, darkMode && styles.inputDark]}
-            placeholder="Write a note..."
-            placeholderTextColor={darkMode ? "#777" : "#999"}
-            value={note}
-            onChangeText={setNote}
-            multiline
-          />
+        {/* Modern Minimal Navbar */}
+        <View style={[styles.modernNavbar, darkMode && styles.navbarDark]}>
           <TouchableOpacity 
-            style={[styles.addButton, darkMode && styles.addButtonDark]} 
-            onPress={handleAddNote}
+            style={styles.navItem}
+            onPress={() => setActiveTab('today')}
           >
-            <Text style={styles.addButtonText}>
-              {editingId !== null ? 'Update' : 'Add'}
-            </Text>
+            <Ionicons 
+              name="today-outline" 
+              size={24} 
+              color={activeTab === 'today' ? (darkMode ? '#fff' : '#000') : '#999'} 
+            />
+            {activeTab === 'today' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => setActiveTab('chatbot')}
+          >
+            <Ionicons 
+              name="chatbubble-ellipses-outline" 
+              size={24} 
+              color={activeTab === 'chatbot' ? (darkMode ? '#fff' : '#000') : '#999'} 
+            />
+            {activeTab === 'chatbot' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.navItem}
+            onPress={() => setActiveTab('you')}
+          >
+            <Ionicons 
+              name="person-outline" 
+              size={24} 
+              color={activeTab === 'you' ? (darkMode ? '#fff' : '#000') : '#999'} 
+            />
+            {activeTab === 'you' && <View style={[styles.activeIndicator, darkMode && styles.activeIndicatorDark]} />}
           </TouchableOpacity>
         </View>
-      )}
-      
-      {/* Mood Modal */}
-      <Modal
-        visible={showMoodModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowMoodModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.moodModalContainer, darkMode && styles.modalDark]}>
-            <Text style={[styles.moodModalTitle, darkMode && styles.textDark]}>How do you feel today?</Text>
-            
-            <View style={styles.moodOptionsContainer}>
-              {['Happy', 'Calm', 'Focused', 'Tired', 'Anxious', 'Grateful'].map((mood) => (
-                <TouchableOpacity 
-                  key={mood}
-                  style={[
-                    styles.moodOption,
-                    darkMode && styles.moodOptionDark,
-                    currentMood === mood && styles.selectedMoodOption
-                  ]}
-                  onPress={() => {
-                    setCurrentMood(mood);
-                    setShowMoodModal(false);
-                  }}
-                >
-                  <Text 
-                    style={[
-                      styles.moodOptionText,
-                      darkMode && styles.textDark,
-                      currentMood === mood && styles.selectedMoodOptionText
-                    ]}
-                  >
-                    {mood}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
+        
+        {/* Input container - only show on Today tab */}
+        {activeTab === 'today' && (
+          <View style={[styles.inputContainer, darkMode && styles.inputContainerDark]}>
+            <TextInput
+              style={[styles.input, { fontFamily: FONTS.regular }, darkMode && styles.inputDark]}
+              placeholder="Write a note..."
+              placeholderTextColor={darkMode ? "#777" : "#999"}
+              value={note}
+              onChangeText={setNote}
+              multiline
+            />
             <TouchableOpacity 
-              style={[styles.closeModalButton, darkMode && styles.buttonDark]}
-              onPress={() => setShowMoodModal(false)}
+              style={[styles.addButton, darkMode && styles.addButtonDark]} 
+              onPress={handleAddNote}
             >
-              <Text style={styles.closeModalButtonText}>Close</Text>
+              <Text style={[styles.addButtonText, { fontFamily: FONTS.regular }]}>
+                {editingId !== null ? 'Update' : 'Add'}
+              </Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        )}
+        
+        {/* Mood Modal */}
+        <Modal
+          visible={showMoodModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowMoodModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.moodModalContainer, darkMode && styles.modalDark]}>
+              <Text style={[styles.moodModalTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>How do you feel today?</Text>
+              
+              <View style={styles.moodOptionsContainer}>
+                {['Happy', 'Calm', 'Focused', 'Tired', 'Anxious', 'Grateful'].map((mood) => (
+                  <TouchableOpacity 
+                    key={mood}
+                    style={[
+                      styles.moodOption,
+                      darkMode && styles.moodOptionDark,
+                      currentMood === mood && styles.selectedMoodOption
+                    ]}
+                    onPress={() => {
+                      setCurrentMood(mood);
+                      setShowMoodModal(false);
+                    }}
+                  >
+                    <Text 
+                      style={[
+                        styles.moodOptionText,
+                        darkMode && styles.textDark,
+                        currentMood === mood && styles.selectedMoodOptionText,
+                        { fontFamily: FONTS.regular }
+                      ]}
+                    >
+                      {mood}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              
+              <TouchableOpacity 
+                style={[styles.closeModalButton, darkMode && styles.buttonDark]}
+                onPress={() => setShowMoodModal(false)}
+              >
+                <Text style={[styles.closeModalButtonText, { fontFamily: FONTS.regular }]}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Add Floating Action Button */}
+       
+      </SafeAreaView>
+    </PaperProvider>
   );
 }
 
@@ -701,54 +788,64 @@ const styles = StyleSheet.create({
     paddingBottom: 150, // More space for the new navbar and input
   },
   noteItem: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    marginBottom: 12,
+    marginHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  noteItemDark: {
+    backgroundColor: '#1A1A1A',
   },
   noteContent: {
-    marginBottom: 10,
+    flex: 1,
+    marginRight: 12,
   },
-  noteText: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: '#333',
-  },
-  noteDate: {
-    fontSize: 12,
-    color: '#888',
-  },
-  noteMood: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-    marginTop: 4,
+  noteMetaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 12,
   },
   noteActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    gap: 8,
   },
   actionButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 4,
-    marginLeft: 8,
+    margin: 0,
   },
-  editButton: {
-    backgroundColor: '#000',
+  fab: {
+    position: 'absolute',
+    margin: 16,
+    right: 0,
+    bottom: 70,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
   },
-  deleteButton: {
-    backgroundColor: '#e74c3c',
+  fabDark: {
+    backgroundColor: '#2A2A2A',
+    borderColor: '#333',
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: '500',
-    fontSize: 14,
+  moodContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  noteText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#1A1A1A',
+  },
+  noteDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  noteMood: {
+    fontSize: 12,
+    color: '#666',
   },
   
   // Modern Navbar styles
@@ -884,76 +981,86 @@ const styles = StyleSheet.create({
   // User Profile Screen styles
   userScreenContainer: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
   userScreenContent: {
-    paddingBottom: 100,
+    padding: 20,
+  },
+  userHeaderBackground: {
+    height: 200,
+  },
+  userHeaderBackgroundImage: {
+    opacity: 0.8,
+  },
+  userHeaderOverlay: {
+    height: 200,
+    justifyContent: 'center',
   },
   userHeader: {
-    alignItems: 'center',
-    paddingVertical: 30,
+    padding: 20,
   },
   userAvatarContainer: {
-    marginBottom: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#4834d4',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   userAvatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#000',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   userAvatarText: {
-    fontSize: 40,
+    color: '#fff',
+    fontSize: 16,
     fontWeight: 'bold',
-    color: 'white',
   },
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 4,
+    color: '#000',
   },
   userSubtitle: {
     fontSize: 16,
     color: '#666',
   },
   settingsSection: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    margin: 16,
     padding: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  sectionDark: {
-    backgroundColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   settingsSectionTitle: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: 'bold',
+    color: '#000',
     marginBottom: 16,
   },
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    marginBottom: 16,
   },
   settingLabel: {
     fontSize: 16,
-  },
-  settingInput: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 4,
-    padding: 8,
-    width: 150,
+    color: '#666',
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 16,
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   statItem: {
     alignItems: 'center',
@@ -964,23 +1071,20 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginTop: 4,
   },
   logoutButton: {
     backgroundColor: '#e74c3c',
-    borderRadius: 8,
-    padding: 16,
+    borderRadius: 12,
+    padding: 12,
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 32,
+    marginTop: 20,
   },
   logoutButtonText: {
-    color: 'white',
-    fontWeight: '500',
+    color: '#fff',
     fontSize: 16,
+    fontWeight: '500',
   },
   
   // Dark mode styles
@@ -1070,23 +1174,85 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // Note item with image
-  noteImage: {
-    height: 120,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    marginBottom: 12,
-  },
-  
   // User profile with background image
-  userHeaderBackground: {
-    height: 200,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  userHeaderBackgroundImage: {
-    opacity: 0.8,
+  sectionAction: {
+    fontSize: 14,
+    color: '#666',
   },
-  userHeaderOverlay: {
-    height: 200,
+  projectsList: {
+    marginTop: 12,
+  },
+  projectItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+  },
+  projectIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  projectInfo: {
+    flex: 1,
+  },
+  projectTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 4,
+  },
+  projectMeta: {
+    fontSize: 12,
+    color: '#666',
+  },
+  seeAllButton: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  seeAllText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  containerDark: {
+    backgroundColor: '#121212',
+  },
+  sectionDark: {
+    backgroundColor: '#1a1a1a',
+    borderColor: '#333',
+  },
+  textGrayDark: {
+    color: '#888',
+  },
+  projectItemDark: {
+    backgroundColor: '#2a2a2a',
+  },
+  seeAllButtonDark: {
+    backgroundColor: '#2a2a2a',
+  },
+  logoutButtonDark: {
+    backgroundColor: '#c0392b',
   },
 });
+
+// Helper function to get time of day
+const getTimeOfDay = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+};

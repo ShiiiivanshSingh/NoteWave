@@ -52,6 +52,22 @@
     ],
     "plugins": [
       "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a42fd80a-4494-448e-935d-709055b27249"
+      }
+    },
+    "fonts": [
+      {
+        "asset": "./assets/Mont-ExtraLightDEMO.ttf"
+      },
+      {
+        "asset": "./assets/Mont-HeavyDEMO.ttf"
+      },
+      {
+        "asset": "./assets/Montana.ttf"
+      }
     ]
   }
 }
