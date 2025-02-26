@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "OfflineVideoPlayer2",
-    "slug": "OfflineVideoPlayer2",
+    "name": "lol",
+    "slug": "lol", 
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,11 +23,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "permissions": [
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,6 +31,18 @@
     "entryPoint": "./App.js",
     "devDependencies": {
       "@react-native-community/cli": "latest"
-    }
+    },
+    "packagerOpts": {
+      "assetExts": [
+        "ttf",
+        "otf"
+      ]
+    },
+    "assets": [
+      "./assets/fonts/"
+    ],
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
