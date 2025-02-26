@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 3.13.3"
+    "version": ">= 3.13.3",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -19,5 +20,6 @@
   },
   "submit": {
     "production": {}
-  }
+  },
+  "owner": "shivansh123"
 }
