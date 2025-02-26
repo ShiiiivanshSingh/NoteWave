@@ -18,6 +18,7 @@ import {
   Image,
   ImageBackground
 } from 'react-native';
+import WebView from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as Font from 'expo-font';
@@ -323,49 +324,25 @@ export default function App() {
 
   // Render AI Chatbot Screen
   const renderChatbotScreen = () => (
-    <View style={[
-      styles.chatbotContainer, 
-      darkMode ? { backgroundColor: '#121212' } : { backgroundColor: '#fff' }
-    ]}>
-      <View style={[
-        styles.chatbotHeader,
-        darkMode ? { backgroundColor: '#1a1a1a', borderBottomColor: '#333' } : { backgroundColor: '#fff', borderBottomColor: '#eee' }
-      ]}>
-        <Text style={[styles.chatbotTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>AI Assistant</Text>
+    <View style={[styles.chatbotContainer, darkMode && styles.containerDark]}>
+      <View style={[styles.chatbotHeader, darkMode && styles.sectionDark]}>
+        <Text style={[
+          styles.chatbotTitle, 
+          { fontFamily: FONTS.heavy },
+          darkMode && styles.textDark
+        ]}>AI Assistant</Text>
       </View>
       
-      <View style={[
-        styles.chatbotContent,
-        darkMode ? { backgroundColor: '#121212' } : { backgroundColor: '#fff' }
-      ]}>
-        <Text style={[
-          styles.chatbotDescription, 
-          darkMode ? { color: '#ccc' } : { color: '#333' },
-          { fontFamily: FONTS.regular }
-        ]}>
-          Our AI assistant can help you organize your thoughts, generate ideas, and answer questions.
-        </Text>
-        
-        <Image 
-          source={{ uri: UNSPLASH_IMAGES.chatbot }}
-          style={styles.chatbotImage}
-        />
-        
-        <Text style={[
-          styles.chatbotInstructions,
-          darkMode ? { color: '#ccc' } : { color: '#333' },
-          { fontFamily: FONTS.regular }
-        ]}>
-          Tap the button below to chat with our AI assistant.
-        </Text>
-        
-        <TouchableOpacity 
-          style={[styles.chatbotButton, darkMode && styles.buttonDark]}
-          onPress={() => Linking.openURL('https://www.chatbase.co/chatbot-iframe/gcmQxoyUWU8k1Nl78Fz-F')}
-        >
-          <Text style={[styles.chatbotButtonText, { fontFamily: FONTS.regular }]}>Open AI Assistant</Text>
-        </TouchableOpacity>
-      </View>
+      <WebView
+        source={{ uri: 'https://www.chatbase.co/chatbot-iframe/gcmQxoyUWU8k1Nl78Fz-F' }}
+        style={styles.chatWebView}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={darkMode ? "#4C6FFF" : "#2E4BFF"} />
+          </View>
+        )}
+      />
     </View>
   );
 
@@ -1125,48 +1102,32 @@ const styles = StyleSheet.create({
   // Updated chatbot styles
   chatbotContainer: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   chatbotHeader: {
     padding: 16,
     borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
   },
   chatbotTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
     color: '#000',
+    textAlign: 'center',
   },
-  chatbotContent: {
+  chatWebView: {
     flex: 1,
-    padding: 20,
-    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
-  },
-  chatbotDescription: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  chatbotImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    marginVertical: 20,
-  },
-  chatbotInstructions: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  chatbotButton: {
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  chatbotButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
   },
   
   // Updated styles for main card with background image
