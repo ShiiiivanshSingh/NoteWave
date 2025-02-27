@@ -17,7 +17,8 @@ import {
   Linking,
   Image,
   ImageBackground,
-  Animated
+  Animated,
+  BackHandler
 } from 'react-native';
 import WebView from 'react-native-webview';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -80,6 +81,9 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [iconsLoaded, setIconsLoaded] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
 
   // Group all useRef hooks together
   const fadeAnim = useRef(new Animated.Value(0));
@@ -125,20 +129,50 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    async function loadFonts() {
+    async function prepare() {
       try {
-        await Font.loadAsync({
-          'Mont-ExtraLightDEMO': require('./assets/Montserrat-Bold.ttf'),
-          'Mont-HeavyDEMO': require('./assets/Mont-HeavyDEMO.otf'),
-          'Montana': require('./assets/Montserrat-Regular.ttf'),
-        });
+        // Load fonts and icons concurrently
+        await Promise.all([
+          Font.loadAsync({
+            'Mont-ExtraLightDEMO': require('./assets/Montserrat-Bold.ttf'),
+            'Mont-HeavyDEMO': require('./assets/Mont-HeavyDEMO.otf'),
+            'Montana': require('./assets/Montserrat-Regular.ttf'),
+          }),
+          Font.loadAsync(Ionicons.font),  // Load Ionicons font
+          loadUserSettings(),
+          loadNotes()
+        ]);
+
+        // Artificial delay for splash screen
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
         setFontsLoaded(true);
+        setIconsLoaded(true);
+        setAppIsReady(true);
       } catch (error) {
-        console.log('Error loading fonts:', error);
+        console.warn('Error loading app resources:', error);
       }
     }
-    loadFonts();
+
+    prepare();
   }, []);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeTab === 'about') {
+        setActiveTab('you');
+        return true;
+      } else if (activeTab !== 'today') {
+        setActiveTab('today');
+        return true;
+      } else {
+        setShowQuitDialog(true);
+        return true;
+      }
+    });
+
+    return () => backHandler.remove();
+  }, [activeTab]);
 
   // Load notes
   const loadNotes = async () => {
@@ -754,7 +788,56 @@ export default function App() {
     </View>
   );
 
-  if (showSplash) {
+  // Add the quit dialog component
+  const renderQuitDialog = () => (
+    <Modal
+      visible={showQuitDialog}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => setShowQuitDialog(false)}
+    >
+      <View style={styles.quitDialogOverlay}>
+        <View style={[styles.quitDialogContainer, darkMode && styles.quitDialogContainerDark]}>
+          <Text style={[
+            styles.quitDialogTitle,
+            darkMode && styles.textDark,
+            { fontFamily: FONTS.heavy }
+          ]}>
+            Are you sure you want to exit?
+          </Text>
+          
+          <View style={styles.quitDialogButtons}>
+            <TouchableOpacity 
+              style={[styles.quitDialogButton, styles.quitDialogButtonOutline]}
+              onPress={() => setShowQuitDialog(false)}
+            >
+              <Text style={[
+                styles.quitDialogButtonText,
+                styles.quitDialogButtonTextOutline,
+                { fontFamily: FONTS.regular }
+              ]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.quitDialogButton, styles.quitDialogButtonFilled]}
+              onPress={() => BackHandler.exitApp()}
+            >
+              <Text style={[
+                styles.quitDialogButtonText,
+                { fontFamily: FONTS.regular }
+              ]}>
+                Exit App
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (!appIsReady || !iconsLoaded || showSplash) {
     return renderSplashScreen();
   }
 
@@ -883,6 +966,7 @@ export default function App() {
 
         {/* Add Floating Action Button */}
        
+        {renderQuitDialog()}
       </SafeAreaView>
     </PaperProvider>
   );
@@ -1571,6 +1655,61 @@ const styles = StyleSheet.create({
   aboutButtonText: {
     color: '#666',
     fontSize: 14,
+  },
+  quitDialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  quitDialogContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  quitDialogContainerDark: {
+    backgroundColor: '#1A1A1A',
+  },
+  quitDialogTitle: {
+    fontSize: 20,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  quitDialogButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  quitDialogButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quitDialogButtonOutline: {
+    backgroundColor: '#F5F5F5',
+  },
+  quitDialogButtonFilled: {
+    backgroundColor: '#4C6FFF',
+  },
+  quitDialogButtonText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '500',
+  },
+  quitDialogButtonTextOutline: {
+    color: '#000',
   },
 });
 
