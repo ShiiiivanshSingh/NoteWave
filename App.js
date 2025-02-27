@@ -35,6 +35,7 @@ import {
   MD3DarkTheme,
 } from 'react-native-paper';
 import AboutScreen from './src/screens/AboutScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -628,52 +629,29 @@ export default function App() {
           </View>
         </View>
 
-        {/* Settings Section */}
-        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Settings</Text>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Dark Mode</Text>
-            <Switch
-              value={darkMode}
-              onValueChange={toggleDarkMode}
-              trackColor={{ false: "#767577", true: "#4a90e2" }}
-              thumbColor={darkMode ? "#fff" : "#f4f3f4"}
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <Text style={[styles.settingLabel, darkMode && styles.textDark, { fontFamily: FONTS.regular }]}>Notifications</Text>
-            <Switch
-              value={notificationEnabled}
-              onValueChange={(value) => {
-                setNotificationEnabled(value);
-                setTimeout(saveUserSettings, 100);
-              }}
-              trackColor={{ false: "#767577", true: "#4a90e2" }}
-              thumbColor={notificationEnabled ? "#fff" : "#f4f3f4"}
-            />
-          </View>
-        </View>
+        
 
-        {/* Statistics Section */}
-        <View style={[styles.settingsSection, darkMode && styles.sectionDark]}>
-          <Text style={[styles.settingsSectionTitle, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>Statistics</Text>
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>{notes.length}</Text>
-              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Notes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>
-                {notes.filter(note => note.mood).length}
-              </Text>
-              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Moods</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={[styles.statNumber, darkMode && styles.textDark, { fontFamily: FONTS.heavy }]}>7</Text>
-              <Text style={[styles.statLabel, darkMode && styles.textGrayDark, { fontFamily: FONTS.light }]}>Days</Text>
-            </View>
-          </View>
-        </View>
+      
+
+
+
+{/* Settings Section */}
+<TouchableOpacity 
+          style={[styles.settingsButton, darkMode && styles.settingsButtonDark]}
+          onPress={() => setActiveTab('settings')}
+        >
+          <Ionicons 
+            name="settings-outline" 
+            size={24} 
+            color={darkMode ? '#fff' : '#000'} 
+          />
+          <Text style={[
+            styles.settingsButtonText,
+            darkMode && styles.textDark,
+            { fontFamily: FONTS.regular }
+          ]}>Settings</Text>
+        </TouchableOpacity>
+
 
         {/* Logout Button */}
         <TouchableOpacity 
@@ -681,7 +659,7 @@ export default function App() {
           onPress={() => Alert.alert('Logout', 'This would log you out in a real app.')}
         >
           <Text style={[styles.logoutButtonText, { fontFamily: FONTS.regular }]}>
-            Logout
+            LogIn (Coming Soon)
           </Text>
         </TouchableOpacity>
 
@@ -851,6 +829,17 @@ export default function App() {
         {activeTab === 'you' && renderUserScreen()}
         {activeTab === 'chatbot' && renderChatbotScreen()}
         {activeTab === 'about' && <AboutScreen navigation={{ goBack: () => setActiveTab('you') }} darkMode={darkMode} />}
+        {activeTab === 'settings' && (
+          <SettingsScreen 
+            navigation={{ goBack: () => setActiveTab('you') }}
+            darkMode={darkMode}
+            toggleDarkMode={toggleDarkMode}
+            notificationEnabled={notificationEnabled}
+            setNotificationEnabled={setNotificationEnabled}
+            saveUserSettings={saveUserSettings}
+            userName={userName}
+          />
+        )}
         
         {/* Modern Minimal Navbar */}
         {activeTab !== 'about' && (
@@ -1709,6 +1698,26 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   quitDialogButtonTextOutline: {
+    color: '#000',
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  settingsButtonDark: {
+    backgroundColor: '#1A1A1A',
+    borderColor: '#333',
+  },
+  settingsButtonText: {
+    fontSize: 16,
+    marginLeft: 12,
     color: '#000',
   },
 });
